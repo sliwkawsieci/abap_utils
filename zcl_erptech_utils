@@ -1,0 +1,179 @@
+CLASS zcl_erptech_utils DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+    CLASS-DATA mo_data_provider TYPE REF TO zif_iaf_data_provider.
+    CLASS-METHODS  read_infotype_tabname
+      IMPORTING
+        !iv_tclas         TYPE pspar-tclas OPTIONAL
+        !iv_infty         TYPE t777d-infty
+      RETURNING
+        VALUE(rv_tabname) TYPE t777d-dbtab .
+    CLASS-METHODS get_field_type
+      IMPORTING
+        iv_infty      TYPE infty
+        iv_fieldname  TYPE fieldname
+      RETURNING
+        VALUE(r_type) TYPE string.
+    CLASS-METHODS get_field_component_name
+      IMPORTING
+        iv_infty      TYPE infty
+        iv_fieldname  TYPE fieldname
+      RETURNING
+        VALUE(r_type) TYPE string.
+
+    CLASS-METHODS get_infotype_tabname
+      IMPORTING
+        !iv_infty       TYPE pskey-infty
+      RETURNING
+        VALUE(r_result) TYPE tabname .
+    CLASS-METHODS get_struct_components_tab
+      IMPORTING
+        !is_data      TYPE any
+      RETURNING
+        VALUE(rt_res) TYPE abap_compdescr_tab .
+    CLASS-METHODS change_pskey_and_add_fields
+      IMPORTING
+        !is_data             TYPE any
+      CHANGING
+        !cs_pskey            TYPE pskey
+      RETURNING
+        VALUE(rt_add_fields) TYPE ziaf_rt_fields .
+    CLASS-METHODS class_constructor.
+    CLASS-METHODS calculate_days_for_processing
+      IMPORTING
+        iv_days_before  TYPE ziaf_days_to_collect_emp
+        iv_cut_off_date TYPE datum
+      RETURNING
+        VALUE(rv_days)  TYPE ziaf_days_to_collect_emp .
+  PROTECTED SECTION.
+  PRIVATE SECTION.
+
+ENDCLASS.
+
+
+
+CLASS zcl_iaf_utils IMPLEMENTATION.
+
+  METHOD class_constructor.
+
+    mo_data_provider = NEW zcl_iaf_data_provider( ).
+  ENDMETHOD.
+
+
+  METHOD calculate_days_for_processing.
+
+    DATA: lv_days_for_processing TYPE ziaf_days_to_collect_emp.
+
+    IF iv_cut_off_date IS INITIAL.
+      rv_days = iv_days_before.
+      RETURN.
+    ENDIF.
+
+    lv_days_for_processing = sy-datum - iv_cut_off_date.
+
+    IF lv_days_for_processing < iv_days_before.
+      rv_days = lv_days_for_processing.
+    ELSE.
+      rv_days = iv_days_before.
+    ENDIF.
+
+  ENDMETHOD.
+
+
+  METHOD change_pskey_and_add_fields.
+    DATA: ls_struc_des TYPE REF TO cl_abap_structdescr.
+
+    ls_struc_des ?= cl_abap_typedescr=>describe_by_data( p_data = is_data ).
+
+    LOOP AT ls_struc_des->components[] ASSIGNING FIELD-SYMBOL(<ls_comp>).
+      ASSIGN COMPONENT <ls_comp>-name OF STRUCTURE is_data TO FIELD-SYMBOL(<lv_in_data_comp>). "must be ok
+      ASSIGN COMPONENT <ls_comp>-name OF STRUCTURE cs_pskey TO FIELD-SYMBOL(<lv_pskey_comp>).
+      IF sy-subrc EQ 0.
+        <lv_pskey_comp> = <lv_in_data_comp>.
+      ELSE.
+        APPEND INITIAL LINE TO rt_add_fields ASSIGNING FIELD-SYMBOL(<ls_add_field>).
+        <ls_add_field>-field = <ls_comp>-name.
+        <ls_add_field>-value = <lv_in_data_comp>.
+      ENDIF.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
+  METHOD get_struct_components_tab.
+
+    DATA: ls_struc_des TYPE REF TO cl_abap_structdescr.
+
+    ls_struc_des ?= cl_abap_typedescr=>describe_by_data( p_data = is_data ).
+
+    rt_res = ls_struc_des->components[].
+
+  ENDMETHOD.
+  METHOD get_infotype_tabname.
+
+    r_result = mo_data_provider->read_infotype_tabname(  |{ iv_infty ALPHA = IN }| ).
+
+  ENDMETHOD.
+  METHOD get_field_type.
+**********************************************************************
+    "returning type of the table field.
+**********************************************************************
+    DATA: lv_tabname       TYPE string,
+          lt_table         TYPE REF TO data,
+          lt_ifc           TYPE lvc_t_fcat,
+          ls_ref_table_des TYPE REF TO cl_abap_structdescr,
+          lv_datatype      TYPE string.
+    FIELD-SYMBOLS <lt_dyn_table> TYPE STANDARD TABLE.
+    lv_tabname = get_infotype_tabname( iv_infty ).
+    ls_ref_table_des ?= cl_abap_typedescr=>describe_by_name( lv_tabname ).
+    READ TABLE ls_ref_table_des->components[]  ASSIGNING FIELD-SYMBOL(<ls_comp>) WITH KEY name = iv_fieldname .
+    IF sy-subrc = 0.
+      r_type = <ls_comp>-type_kind.
+*      CASE <ls_comp>-type_kind.
+*        WHEN 'C'.
+*          r_type = 'CHAR'.
+*        WHEN 'N'.
+*          r_type = 'NUMC'.
+*        WHEN 'D'.
+*          r_type = 'DATE'.
+*        WHEN 'P'.
+*          r_type = 'PACK'.
+*        WHEN OTHERS.
+*          r_type = <ls_comp>-type_kind.
+*      ENDCASE.
+    ENDIF.
+  ENDMETHOD.
+  METHOD get_field_component_name.
+**********************************************************************
+    "returning type of the table field.
+**********************************************************************
+    DATA: lv_tabname       TYPE string,
+          lt_table         TYPE REF TO data,
+          lt_ifc           TYPE lvc_t_fcat,
+          ls_ref_table_des TYPE REF TO cl_abap_structdescr,
+          lv_datatype      TYPE string.
+    FIELD-SYMBOLS <lt_dyn_table> TYPE STANDARD TABLE.
+    lv_tabname = get_infotype_tabname( iv_infty ).
+    ls_ref_table_des ?= cl_abap_typedescr=>describe_by_name( lv_tabname ).
+    READ TABLE ls_ref_table_des->components[]  ASSIGNING FIELD-SYMBOL(<ls_comp>) WITH KEY name = iv_fieldname .
+    IF sy-subrc = 0.
+      r_type = <ls_comp>-name.
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD read_infotype_tabname.
+
+    CALL FUNCTION 'HR_INFOTYPE_DATABASETABLE_GET'
+      EXPORTING
+        infty           = iv_infty
+        tclas           = 'A'
+      IMPORTING
+        dbname          = rv_tabname
+      EXCEPTIONS
+        entry_not_found = 1
+        OTHERS          = 2.
+  ENDMETHOD.
+ENDCLASS.
