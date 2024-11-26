@@ -1,10 +1,12 @@
-CLASS zcl_iaf_utils DEFINITION
+CLASS zcl_erptech_hr_utils DEFINITION
   PUBLIC
   FINAL
   CREATE PUBLIC .
 
   PUBLIC SECTION.
     CLASS-DATA mo_data_provider TYPE REF TO zif_iaf_data_provider.
+
+    CLASS-METHODS class_constructor.
     CLASS-METHODS  read_infotype_tabname
       IMPORTING
         !iv_tclas         TYPE pspar-tclas OPTIONAL
@@ -23,7 +25,6 @@ CLASS zcl_iaf_utils DEFINITION
         iv_fieldname  TYPE fieldname
       RETURNING
         VALUE(r_type) TYPE string.
-
     CLASS-METHODS get_infotype_tabname
       IMPORTING
         !iv_infty       TYPE pskey-infty
@@ -41,33 +42,32 @@ CLASS zcl_iaf_utils DEFINITION
         !cs_pskey            TYPE pskey
       RETURNING
         VALUE(rt_add_fields) TYPE ziaf_rt_fields .
-    CLASS-METHODS class_constructor.
     CLASS-METHODS calculate_days_for_processing
       IMPORTING
         iv_days_before  TYPE ziaf_days_to_collect_emp
         iv_cut_off_date TYPE datum
       RETURNING
         VALUE(rv_days)  TYPE ziaf_days_to_collect_emp .
+    CLASS-METHODS get_domane_to_infotype_field
+      IMPORTING
+        iv_infty      TYPE infty
+        iv_fieldname  TYPE fieldname
+      RETURNING
+        VALUE(r_type) TYPE string.
+    CLASS-METHODS get_dataelement_infotype_field
+      IMPORTING
+        iv_infty      TYPE infty
+        iv_fieldname  TYPE fieldname
+      RETURNING
+        VALUE(r_type) TYPE string.
 
-    METHODS get_domane_to_infotype_field
-      IMPORTING
-        iv_infty      TYPE infty
-        iv_fieldname  TYPE fieldname
-      RETURNING
-        VALUE(r_type) TYPE string.
-    METHODS get_dataelt_to_infotype_field
-      IMPORTING
-        iv_infty      TYPE infty
-        iv_fieldname  TYPE fieldname
-      RETURNING
-        VALUE(r_type) TYPE string.
   PROTECTED SECTION.
   PRIVATE SECTION.
 ENDCLASS.
 
 
 
-CLASS zcl_iaf_utils IMPLEMENTATION.
+CLASS zcl_erptech_hr_utils IMPLEMENTATION.
 
   METHOD class_constructor.
 
@@ -124,11 +124,13 @@ CLASS zcl_iaf_utils IMPLEMENTATION.
     rt_res = ls_struc_des->components[].
 
   ENDMETHOD.
+
   METHOD get_infotype_tabname.
 
     r_result = mo_data_provider->read_infotype_tabname(  |{ iv_infty ALPHA = IN }| ).
 
   ENDMETHOD.
+
   METHOD get_field_type.
 **********************************************************************
     "returning type of the table field.
@@ -188,7 +190,7 @@ CLASS zcl_iaf_utils IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD get_dataelt_to_infotype_field.
+  METHOD get_dataelement_infotype_field.
 **********************************************************************
     "returning domain of the table field.
 **********************************************************************
