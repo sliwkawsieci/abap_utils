@@ -1,4 +1,4 @@
-CLASS zcl_erptech_utils DEFINITION
+CLASS zcl_iaf_utils DEFINITION
   PUBLIC
   FINAL
   CREATE PUBLIC .
@@ -17,7 +17,7 @@ CLASS zcl_erptech_utils DEFINITION
         iv_fieldname  TYPE fieldname
       RETURNING
         VALUE(r_type) TYPE string.
-    CLASS-METHODS get_field_component_name
+    CLASS-METHODS get_infotype_field_name
       IMPORTING
         iv_infty      TYPE infty
         iv_fieldname  TYPE fieldname
@@ -48,9 +48,21 @@ CLASS zcl_erptech_utils DEFINITION
         iv_cut_off_date TYPE datum
       RETURNING
         VALUE(rv_days)  TYPE ziaf_days_to_collect_emp .
+
+    METHODS get_domane_to_infotype_field
+      IMPORTING
+        iv_infty      TYPE infty
+        iv_fieldname  TYPE fieldname
+      RETURNING
+        VALUE(r_type) TYPE string.
+    METHODS get_dataelt_to_infotype_field
+      IMPORTING
+        iv_infty      TYPE infty
+        iv_fieldname  TYPE fieldname
+      RETURNING
+        VALUE(r_type) TYPE string.
   PROTECTED SECTION.
   PRIVATE SECTION.
-
 ENDCLASS.
 
 
@@ -122,40 +134,21 @@ CLASS zcl_iaf_utils IMPLEMENTATION.
     "returning type of the table field.
 **********************************************************************
     DATA: lv_tabname       TYPE string,
-          lt_table         TYPE REF TO data,
-          lt_ifc           TYPE lvc_t_fcat,
-          ls_ref_table_des TYPE REF TO cl_abap_structdescr,
-          lv_datatype      TYPE string.
-    FIELD-SYMBOLS <lt_dyn_table> TYPE STANDARD TABLE.
+          ls_ref_table_des TYPE REF TO cl_abap_structdescr.
     lv_tabname = get_infotype_tabname( iv_infty ).
     ls_ref_table_des ?= cl_abap_typedescr=>describe_by_name( lv_tabname ).
     READ TABLE ls_ref_table_des->components[]  ASSIGNING FIELD-SYMBOL(<ls_comp>) WITH KEY name = iv_fieldname .
     IF sy-subrc = 0.
       r_type = <ls_comp>-type_kind.
-*      CASE <ls_comp>-type_kind.
-*        WHEN 'C'.
-*          r_type = 'CHAR'.
-*        WHEN 'N'.
-*          r_type = 'NUMC'.
-*        WHEN 'D'.
-*          r_type = 'DATE'.
-*        WHEN 'P'.
-*          r_type = 'PACK'.
-*        WHEN OTHERS.
-*          r_type = <ls_comp>-type_kind.
-*      ENDCASE.
     ENDIF.
   ENDMETHOD.
-  METHOD get_field_component_name.
+
+  METHOD get_infotype_field_name.
 **********************************************************************
     "returning type of the table field.
 **********************************************************************
     DATA: lv_tabname       TYPE string,
-          lt_table         TYPE REF TO data,
-          lt_ifc           TYPE lvc_t_fcat,
-          ls_ref_table_des TYPE REF TO cl_abap_structdescr,
-          lv_datatype      TYPE string.
-    FIELD-SYMBOLS <lt_dyn_table> TYPE STANDARD TABLE.
+          ls_ref_table_des TYPE REF TO cl_abap_structdescr.
     lv_tabname = get_infotype_tabname( iv_infty ).
     ls_ref_table_des ?= cl_abap_typedescr=>describe_by_name( lv_tabname ).
     READ TABLE ls_ref_table_des->components[]  ASSIGNING FIELD-SYMBOL(<ls_comp>) WITH KEY name = iv_fieldname .
@@ -176,4 +169,41 @@ CLASS zcl_iaf_utils IMPLEMENTATION.
         entry_not_found = 1
         OTHERS          = 2.
   ENDMETHOD.
+
+  METHOD get_domane_to_infotype_field.
+**********************************************************************
+    "returning domain of the table field.
+**********************************************************************
+    DATA: lt_struct_fields TYPE cl_abap_structdescr=>component_table,
+          ls_ref_table_des TYPE REF TO cl_abap_structdescr.
+
+    ls_ref_table_des ?= cl_abap_typedescr=>describe_by_name( get_infotype_tabname( iv_infty ) ).
+    lt_struct_fields  = ls_ref_table_des->get_components( ) .
+    DATA(lt_field_list) = ls_ref_table_des->get_ddic_field_list( ).
+
+    READ TABLE lt_field_list ASSIGNING FIELD-SYMBOL(<ls_field>) WITH KEY fieldname = iv_fieldname .
+    IF sy-subrc = 0.
+      r_type = <ls_field>-domname.
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD get_dataelt_to_infotype_field.
+**********************************************************************
+    "returning domain of the table field.
+**********************************************************************
+    DATA: lt_struct_fields TYPE cl_abap_structdescr=>component_table,
+          ls_ref_table_des TYPE REF TO cl_abap_structdescr.
+
+    ls_ref_table_des ?= cl_abap_typedescr=>describe_by_name( get_infotype_tabname( iv_infty ) ).
+    lt_struct_fields  = ls_ref_table_des->get_components( ) .
+    DATA(lt_field_list) = ls_ref_table_des->get_ddic_field_list( ).
+
+
+    READ TABLE lt_field_list ASSIGNING FIELD-SYMBOL(<ls_field>) WITH KEY fieldname = iv_fieldname .
+    IF sy-subrc = 0.
+      r_type = <ls_field>-rollname.
+    ENDIF.
+  ENDMETHOD.
+
 ENDCLASS.
